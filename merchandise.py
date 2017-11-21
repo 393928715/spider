@@ -266,7 +266,7 @@ class merchandise():
                 )    
         cursor=conn.cursor()    
         
-        deletesql="SET SQL_SAFE_UPDATES=0; delete FROM stocksystem.industryday where name = '预焙阳极' or name = '碳酸锂(电池级)' or name = '黑钨精矿';truncate table stream;"
+        deletesql="SET SQL_SAFE_UPDATES=0; delete FROM stocksystem.industryday where name = '预焙阳极' or name = '碳酸锂(电池级)' or name = '黑钨精矿' or name = '氧化铝';truncate table stream;"
         
         cursor.execute(deletesql)    
         
@@ -284,6 +284,8 @@ class merchandise():
         self.updateHwjk()
         
         self.updateYbyj()
+        
+        self.update_yhl()
               
         df_tsl=self.updateLiBattery()
         
@@ -291,8 +293,7 @@ class merchandise():
         
         print 'done...'
 
-
-        
+   
     def updateLiBattery(self):
     
         def average(df):   
@@ -392,8 +393,76 @@ class merchandise():
         
         print u'预焙阳极 done...'
         
+    def update_yhl(self):
+    
+        main_url='http://www.100ppi.com/price/'
         
+        text_list=[]
         
+        main_doc=pq('http://www.100ppi.com/price/?f=search&c=product&terms=%E6%B0%A7%E5%8C%96%E9%93%9D&p=1')
+        
+        n=0
+        
+        df_yhl=pd.DataFrame()
+        
+        while main_doc:
+        
+            text_doc=main_doc('tr')
+            
+            for each in text_doc:
+                
+                if each != text_doc[0]:
+                
+                    text=pq(each).text().split()
+                    
+                    text_list.append(text)
+            
+            s1=pd.DataFrame(text_list)
+            
+            df_yhl=df_yhl.append(s1)
+            
+            url_doc=main_doc('div[class="page-inc"]')('a')
+            
+            for each in url_doc:
+                
+                each_doc=pq(each)
+                
+                if each_doc.text()=='下一页':
+                    
+                    next_url=main_url+each_doc.attr.href
+                    
+                    break
+                    
+                else:
+                    
+                    next_url=None
+            
+            main_doc=pq(next_url)
+            
+            n+=1
+            
+            print n
+        
+        df_yhl.drop([1,2,3],axis=1,inplace=True)
+        
+        df_yhl.columns=['name','close','date']
+        
+        df_yhl['close']=df_yhl['close'].apply(lambda x:x.replace(u'元/吨','')).astype(int)
+        
+        df_yhl['unit']=u'元/吨'
+        
+        def average(df):   
+            quotationMean=df['close'].mean()
+            df['close']=quotationMean
+            return df.iloc[0]
+        
+        df_yhl=df_yhl.groupby('date').apply(average)
+        
+        df_yhl.to_sql('industryday',con=self.engine,if_exists='append',index=None)
+        
+        print '氧化铝done...'
+
+            
     def update(self,types,days):
         #qh=['期货近约榜','期货主约榜','农产品近约榜','工业品近约榜','有色金属近约榜','能源石化近约榜','农产品主约榜','工业品主约榜','有色金属主约榜','能源石化主约榜']
         ts=['稀土榜','化肥榜','氟化工榜','磷化工榜','溴化工榜','氯碱产业榜','甲醇产业榜','丙烯产业榜','苯乙烯产业榜','乙二醇产业榜','PTA产业榜','橡胶榜','塑料榜','资源商品榜','商品题材榜','五大钢材榜']
@@ -412,7 +481,6 @@ class merchandise():
             for name in names:
                 self.download(name,'行业日',days=days,update=True)        
     
-    
 if __name__ == '__main__':
     
     m=merchandise()
@@ -420,5 +488,5 @@ if __name__ == '__main__':
     #m.update(types='ts',days=7)
     
     m.updateElse()
-
+    #m.updateYbyj()
 

@@ -341,7 +341,6 @@ class mdsePlot:
             m.update(types='hy,ts',days=days)    
             m.updateElse()        
             
-     
         #图组添加商品数目
         setrange=7 
         
@@ -350,6 +349,8 @@ class mdsePlot:
         rf_mdse=pd.read_table(u'E:\\work\\标的\\mdse.txt',names=['mdse'],encoding='gbk')
         
         df_mdse=pd.read_sql('select name,date,close,unit from industryday where date >= "'+self.sdate+'" and date <= "'+self.edate+'"',con=self.engine)
+
+        df_mdse['close']=df_mdse['close'].astype(float)           
             
         mdsenames=df_mdse['name'].drop_duplicates()
         
@@ -408,10 +409,12 @@ class mdsePlot:
         df_mdse.sort_values('endchg',inplace=True,ascending=False)
             
         #得到最新的，按涨幅排序的商品名
-        lastdate=df_mdse['date'].max()
+        lastdate=str(df_mdse['date'].max())
         
-        sortnames=df_mdse[df_mdse.date==lastdate]['name']
+        #sortnames=df_mdse[df_mdse.date==lastdate]['name']
         
+        sortnames=df_mdse['name'].drop_duplicates()
+ 
         namenum=len(sortnames)
         
         streamleft=17
@@ -420,6 +423,10 @@ class mdsePlot:
         
         chgList=[]
         maxlen=max(self.lenlist)
+        
+        #定义成本变量
+        djl_cost=0
+        
         for name  in sortnames:            
             #yearmiss=False
          
@@ -446,24 +453,49 @@ class mdsePlot:
             datasheet.write_row(top,left,header)
             
             #计算周、月、季度涨幅            
-            endchg=data.iloc[-1]['chg']
-            daychg=endchg-data.iloc[-2]['chg']
-
-            try:                
-                weekchg=endchg-data.iloc[-6]['chg']
-            except:
-                weekchg='miss'
+            if data['date'].iat[-1] == lastdate:
+                
+                endchg=data.iloc[-1]['chg']
+                daychg=endchg-data.iloc[-2]['chg']
+    
+                try:                
+                    weekchg=endchg-data.iloc[-6]['chg']
+                except:
+                    weekchg='miss'
+                
+                try:
+                    monthchg=endchg-data.iloc[-23]['chg']   
+                except:
+                    monthchg='miss'
+                
+                try:                
+                    quarterchg=endchg-data.iloc[-64]['chg'] 
+                except:
+                    quarterchg='miss'    
+                
+                chgList.append([name,data['close'].iat[-1],data['unit'].iat[-1],daychg,weekchg,monthchg,quarterchg])
             
-            try:
-                monthchg=endchg-data.iloc[-23]['chg']   
-            except:
-                monthchg='miss'
+            #记录产品成本
+            if '预焙阳极' in name:
+                tmp_close=data['close']
+                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                djl_cost+=tmp_close*0.49
             
-            try:                
-                quarterchg=endchg-data.iloc[-64]['chg'] 
-            except:
-                quarterchg='miss'                      
+            if '氧化铝' in name:
+                tmp_close=data['close']
+                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                djl_cost+=tmp_close*1.95
             
+            if '氟化铝' in name:
+                tmp_close=data['close']
+                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                djl_cost+=tmp_close*0.025     
+                
+            if '冰晶石' in name:
+                tmp_close=data['close']
+                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                djl_cost+=tmp_close*0.01                  
+                        
 #            try:
 #                yearchg=endchg-data.iloc[-251]['chg']
 #            except:
@@ -476,7 +508,7 @@ class mdsePlot:
 #                chgsheet.write_row(loop+1,0,chghead,title)
 #                chgsheet.write_row(loop,0,[u'日期:',self.edate],title)
                 
-            chgList.append([name,data['close'].iat[-1],data['unit'].iat[-1],daychg,weekchg,monthchg,quarterchg])
+            
 #            chgsheet.write_row(loop+2,0,[name,'',data['unit'].iat[-1],daychg,weekchg,monthchg,quarterchg],PER)
 #            chgsheet.write(loop+2,1,data['close'].iat[-1],zwfloat)
                 #,yearchg
@@ -491,7 +523,7 @@ class mdsePlot:
             picsheet.write_row(streamtop,streamleft+1,up)
             
             picsheet.write(streamtop+2,streamleft-1,name+u'下游:')
-            picsheet.write_row(streamtop+2,streamleft+1,down)           
+            picsheet.write_row(streamtop+2,streamleft+1,down) 
             
             #插入产业链图
             #去掉商品名称的括号内容,用于于产业链图名称比对
@@ -529,9 +561,13 @@ class mdsePlot:
             chgsheet.write_row(i+2,0,df_chg.iloc[i][[u'名称',u'报价',u'单位']],zwfloat)
             
             chgsheet.write_row(i+2,3,df_chg.iloc[i][[u'日涨幅',u'周涨幅',u'月涨幅',u'季涨幅']],PER)
-            
-            
-        chgsheet.set_column(0,len(chghead),15)
+                 
+        chgsheet.set_column(0,len(chghead)-1,15)
+        
+        djl_cost+=3960
+        
+        chgsheet.write_row(0,len(chghead)+1,['商品','成本'])
+        chgsheet.write_row(1,len(chghead)+1,['电解铝',djl_cost])
                             
         lastloopflag=namenum-namenum%setrange
         
@@ -558,6 +594,6 @@ class mdsePlot:
         
 if __name__ == '__main__':
 
-    s=mdsePlot(sdate='2017-01-01',edate='2017-10-30')
+    s=mdsePlot(sdate='2017-01-01',edate='2017-11-20')
     
     s.plotRF(RF=True,update=False,days=1)
