@@ -80,9 +80,15 @@ class mdsePlot:
         
         data['date']=data['date'].astype(str)    
         
-        data['chg'].fillna(method='bfill',inplace=True)
+        data['chg'].fillna(method='ffill',inplace=True)
         
         data['name'].fillna(method='ffill',inplace=True)
+        
+        data['unit'].fillna(method='ffill',inplace=True)
+        
+        #data['close'].fillna(method='ffill',inplace=True)
+        
+        data['close'].fillna(0,inplace=True)
         
         data.fillna('miss',inplace=True)
         
@@ -139,7 +145,7 @@ class mdsePlot:
  
 
     #生成单商品图
-    def addChart(self,wbk,namecol,datecol,chgcol,datalen,linewidth,loopindex,name,width,height):
+    def addChart(self,wbk,close0,closecol,namecol,datecol,chgcol,datalen,linewidth,loopindex,name,width,height):
         
        data_top=1
        
@@ -156,9 +162,16 @@ class mdsePlot:
         'values':['data', data_top, chgcol+loopindex*interval, data_top+datalen,chgcol+loopindex*interval],
         'line':{'color':'#336699'},#FF6666
         })
+
+       bk_chart.add_series({
+        'name':' ',
+        #'categories':['data', data_top, datecol+loopindex*interval, data_top+datalen, datecol+loopindex*interval],
+        'values':['data', data_top, closecol+loopindex*interval, data_top+datalen,closecol+loopindex*interval],
+        'y2_axis': True,
+        'line':   {'none': True},
+        })    
     
-    
-    #   bk_chart.add_series({
+    #   bk_chart.add_series({close0
     #    'name':['data', 0, closecol+loopindex*interval],
     #    'categories':['data', data_top, datecol+loopindex*interval, data_top+datalen, datecol+loopindex*interval],
     #    'values':['data', data_top, closecol+loopindex*interval, data_top+datalen,closecol+loopindex*interval],
@@ -176,9 +189,9 @@ class mdsePlot:
                             'interval_unit': 10                           
                             })
                             
-    #   bk_chart.set_y_axis({#'name':'',
-    #                       'name_font': {'size': 10, 'bold': True}
-    #                       })
+       bk_chart.set_y2_axis({#'name':'',
+                           'min': close0
+                           })
        
        bk_chart.set_size({'width':width,'height':height})  
      
@@ -335,6 +348,8 @@ class mdsePlot:
 
     def plotRF(self,RF=True,update=False,days=1):
         
+        from merchandise import merchandise
+        
         if update == True:
         
             m=merchandise()   
@@ -419,6 +434,7 @@ class mdsePlot:
         
         streamleft=17
         streamtop=0
+        prime_mdse_top=0
         loop=0        
         
         chgList=[]
@@ -428,8 +444,7 @@ class mdsePlot:
         djl_cost=0
         
         for name  in sortnames:            
-            #yearmiss=False
-         
+
             #处理每种商品对应的数据
             data=df_mdse[df_mdse.name==name] 
                         
@@ -448,15 +463,21 @@ class mdsePlot:
             
             chgcol=header.index(u'涨幅')
             
-            namecol=header.index('name')               
+            namecol=header.index('name')          
+            
+            closecol=header.index('close')  
 
             datasheet.write_row(top,left,header)
             
             #计算周、月、季度涨幅            
-            if data['date'].iat[-1] == lastdate:
+            if data['close'].iat[-1] != 0:
                 
                 endchg=data.iloc[-1]['chg']
-                daychg=endchg-data.iloc[-2]['chg']
+                
+                try:
+                    daychg=endchg-data.iloc[-2]['chg']
+                except:
+                    daychg='miss'
     
                 try:                
                     weekchg=endchg-data.iloc[-6]['chg']
@@ -473,28 +494,40 @@ class mdsePlot:
                 except:
                     quarterchg='miss'    
                 
-                chgList.append([name,data['close'].iat[-1],data['unit'].iat[-1],daychg,weekchg,monthchg,quarterchg])
+                chgList.append([name,data['close'].iat[-1],data['unit'].iat[0],daychg,weekchg,monthchg,quarterchg])
             
             #记录产品成本
             if '预焙阳极' in name:
-                tmp_close=data['close']
-                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                try:
+                    tmp_close=data['close'].drop(data['close'][data['close']==0].index).iat[-1]
+                except:
+                    tmp_close=data['close'].iat[-1]                    
                 djl_cost+=tmp_close*0.49
             
             if '氧化铝' in name:
-                tmp_close=data['close']
-                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                try:
+                    tmp_close=data['close'].drop(data['close'][data['close']==0].index).iat[-1]
+                except:
+                    tmp_close=data['close'].iat[-1]     
                 djl_cost+=tmp_close*1.95
             
             if '氟化铝' in name:
-                tmp_close=data['close']
-                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
+                try:
+                    tmp_close=data['close'].drop(data['close'][data['close']==0].index).iat[-1]
+                except:
+                    tmp_close=data['close'].iat[-1]    
                 djl_cost+=tmp_close*0.025     
                 
             if '冰晶石' in name:
-                tmp_close=data['close']
-                tmp_close=tmp_close.drop(tmp_close[tmp_close=='miss'].index).iat[-1]
-                djl_cost+=tmp_close*0.01                  
+                try:
+                    tmp_close=data['close'].drop(data['close'][data['close']==0].index).iat[-1]
+                except:
+                    tmp_close=data['close'].iat[-1]    
+                djl_cost+=tmp_close*0.01         
+            
+            
+            #得到最初的价格
+            close0=data['close'].iat[0]
                         
 #            try:
 #                yearchg=endchg-data.iloc[-251]['chg']
@@ -533,8 +566,15 @@ class mdsePlot:
                 chainpic=self.chaindir+clearname+'.png'
                 picsheet.insert_image(streamtop+5,streamleft,chainpic, {'x_scale':0.85,'y_scale':0.85 })
   
-            tmpchart=self.addChart(wbk,namecol,datecol,chgcol,maxlen,linewidth,loop,name,1000,600)
+            tmpchart=self.addChart(wbk,close0,closecol,namecol,datecol,chgcol,maxlen,linewidth,loop,name,1000,600)
             picsheet.insert_chart(streamtop,0,tmpchart)
+            
+            #把钴、锂、稀土的图贴在首页   
+            if name in [u'碳酸锂',u'钴',u'氧化镨',u'氧化钕',u'氧化镝']:
+                tmpchart=self.addChart(wbk,close0,closecol,namecol,datecol,chgcol,maxlen,linewidth,loop,name,600,300)
+                chgsheet.insert_chart(prime_mdse_top,12,tmpchart)
+                prime_mdse_top+=15
+               # print 'yes'
                 
             for i in xrange(len(data)):        
                 datasheet.write_row(top+i+1,left,data.iloc[i])
@@ -572,10 +612,15 @@ class mdsePlot:
         lastloopflag=namenum-namenum%setrange
         
         n=0      
+
         loop=0    
+
         left=0        
+
         height=1300
+
         width=700
+
         space=width/20
         
         while 1:   
@@ -586,14 +631,17 @@ class mdsePlot:
                 break
             
             tmpchart=self.addChartSet(wbk,namecol,datecol,chgcol,maxlen,linewidth,loop,setrange,height,width)    
+            
             picsetsheet.insert_chart(top,left,tmpchart)   
+
             top+=space      
+
             loop+=1
         
         wbk.close()
         
 if __name__ == '__main__':
 
-    s=mdsePlot(sdate='2017-01-01',edate='2017-11-20')
+    s=mdsePlot(sdate='2017-01-01',edate='2018-01-02')
     
     s.plotRF(RF=True,update=False,days=1)

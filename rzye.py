@@ -72,14 +72,14 @@ class Rzye:
         
         df_rz.to_csv(self.data_dir,encoding='gbk',index=None)
         
-        return df
+        return df_rz
     
-    def plot_rzye(self):
+    def plot_rzye(self,sdate,edate):
         
         df_rzye=pd.read_csv(self.form_dir,encoding='gbk')
         
         #截取2017年以后数据
-        df_rzye=df_rzye[df_rzye[u'截止日']>='2017-01-01']
+        df_rzye=df_rzye[(df_rzye[u'截止日']>=sdate)&(df_rzye[u'截止日']<=edate)]
         
         df_rzye[u'上证涨跌%']=df_rzye[u'上证指数']/df_rzye[u'上证指数'].iat[0]-1
         
@@ -134,9 +134,26 @@ class Rzye:
             'name':['data', 0, lrye_col],
             'categories':['data', 1, date_col, 1+data_len,date_col],
             'values':['data', 1,lrye_col, 1+data_len,lrye_col],
+            'line':{'width': 1.5},
             })   
             
         lrye_chart.set_size({'width':1000,'height':400})
+        
+        lrye_chart.set_title({'none':True
+                   })
+    
+        lrye_chart.set_x_axis({#'name':u'日期',
+                            #'name_font': {'size': 10, 'bold': True},
+                            'label_position': 'low',
+                            'interval_unit': 2                           
+                            })
+                                                          
+        lrye_chart.set_y_axis({
+                           'interval_unit': 5 ,
+                           'major_gridlines':False,
+                           })                                
+
+        lrye_chart.set_legend({'position': 'top'})                
         
         
         #上海融资额图
@@ -156,8 +173,8 @@ class Rzye:
             })    
         
         sh_chart.set_size({'width':1000,'height':400})
-        
-        
+
+   
         #深圳融资额与深成图
         sz_chart1=wbk.add_chart({'type':'line'})
         
@@ -216,6 +233,6 @@ if __name__ == '__main__':
     
     r=Rzye()
     
-    r.get_rzye()
+    #df=r.get_rzye()
     
-    r.plot_rzye()
+    r.plot_rzye('2017-10-01','2017-12-29')
