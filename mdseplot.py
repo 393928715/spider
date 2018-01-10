@@ -642,6 +642,6 @@ class mdsePlot:
         
 if __name__ == '__main__':
 
-    s=mdsePlot(sdate='2017-01-01',edate='2018-01-02')
+    s=mdsePlot(sdate='2017-01-01',edate='2018-01-09')
     
-    s.plotRF(RF=True,update=False,days=1)
+    s.plotRF(RF=True,update=True,days=1)

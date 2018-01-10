@@ -266,15 +266,26 @@ class merchandise():
                 )    
         cursor=conn.cursor()    
         
-        deletesql="SET SQL_SAFE_UPDATES=0; delete FROM stocksystem.industryday where name = '预焙阳极' or name = '碳酸锂(电池级)' or name = '黑钨精矿' or name = '氧化铝';truncate table stream;"
+        deletesql1="SET SQL_SAFE_UPDATES=0;"
         
-        cursor.execute(deletesql)    
+        deletesql2="delete FROM industryday where name in('预焙阳极','碳酸锂(电池级)','黑钨精矿','氧化铝');"
+        
+        deletesql3="truncate table stream;"
+        
+        cursor.execute(deletesql1)   
+        print deletesql1
+        
+        cursor.execute(deletesql2)   
+        print deletesql2
+        
+        cursor.execute(deletesql3)   
+        print deletesql3
         
         conn.commit()
                        
         conn.close()
         
-        print deletesql
+       
         
         #更新上下游
         s=stream()
@@ -437,7 +448,10 @@ class merchandise():
                     
                     next_url=None
             
-            main_doc=pq(next_url)
+            try:
+                main_doc=pq(next_url)
+            except:
+                break
             
             n+=1
             
